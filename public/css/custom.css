@@ -1,0 +1,14 @@
+/* Giữ cách hoạt động của Bootstrap cho màn nhỏ
+   Chỉ mở rộng khi màn hình lớn để không bị "lọt thỏm" */
+@media (min-width: 992px) {   /* ≥ 992px */
+  .container { max-width: 1280px; }
+}
+@media (min-width: 1200px) {  /* ≥ 1200px */
+  .container { max-width: 1440px; }
+}
+@media (min-width: 1400px) {  /* ≥ 1400px */
+  .container { max-width: 1600px; }
+}
+
+/* Bạn có thể chỉnh lại con số phù hợp với màn của mình.
+   Ví dụ muốn rộng hơn nữa: 1680, 1760, 1800... */
