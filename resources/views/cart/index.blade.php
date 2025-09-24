@@ -170,9 +170,8 @@
                             <option value="momo_atm" {{ old('payment_method')==='momo_atm' ? 'selected' : '' }}>
                                 Thanh toán Napas 247 (ATM)
                             </option>
-                            {{-- MỚI: MB Bank VietQR qua PayOS --}}
-                            <option value="payos"    {{ old('payment_method')==='payos'    ? 'selected' : '' }}>
-                                Thanh toán MB Bank (VietQR qua PayOS)
+                            <option value="bank_transfer" {{ old('payment_method')==='bank_transfer' ? 'selected' : '' }}>
+                                Chuyển khoản ngân hàng (QR Code)
                             </option>
                         </select>
                     </div>
