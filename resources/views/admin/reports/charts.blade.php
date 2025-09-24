@@ -143,7 +143,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
 window.addEventListener('DOMContentLoaded', () => {
-  // ====== DỮ LIỆU TỪ CONTROLLER ======
   const catLabels       = @json($catLabels ?? []);
   const catRevenue      = (@json($catRevenue ?? []) || []).map(Number);
 
@@ -156,24 +155,20 @@ window.addEventListener('DOMContentLoaded', () => {
   const revYearLabels   = @json($revYearLabels ?? []);
   const revYearData     = (@json($revYearData ?? []) || []).map(Number);
 
-  // Với phương thức thanh toán: controller có thể trả về keys thô (cod|momo|payos)
-  // hoặc nhãn đã format. Ta vẫn chuẩn hóa lại ở view để đảm bảo PayOS hiển thị đẹp.
-  const payRawLabels = @json($paymentMethodLabels ?? []);         // ví dụ: ["cod","momo","payos"] hoặc ["COD","MoMo","PayOS (VietQR/MB)"]
+  const payRawLabels = @json($paymentMethodLabels ?? []);
   const payRevenue   = (@json($paymentMethodRevenue ?? []) || []).map(Number);
 
-  // Chuẩn hóa nhãn phương thức thanh toán
   const labelMap = {
-    'cod'   : 'COD',
-    'momo'  : 'MoMo',
-    'payos' : 'PayOS (VietQR/MB)'
+    'cod'           : 'COD',
+    'momo'          : 'MoMo',
+    'bank_transfer' : 'Chuyển khoản ngân hàng'
   };
   const payLabels = (payRawLabels || []).map(l => {
     if (!l) return '';
     const k = l.toString().trim().toLowerCase();
-    return labelMap[k] ?? l; // nếu đã format đẹp từ controller thì giữ nguyên
+    return labelMap[k] ?? l;
   });
 
-  // ====== TIỆN ÍCH ======
   const fmtVND = (n)=> new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND', maximumFractionDigits:0 }).format(+n||0);
   const sum = (arr)=> (arr||[]).reduce((a,b)=> a + (+b||0), 0);
   const palette = ['#6366f1','#22c55e','#ef4444','#0ea5e9','#f59e0b','#84cc16','#a855f7','#06b6d4','#f97316','#10b981','#e11d48','#14b8a6'];
@@ -183,7 +178,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const payColorMap = {
     'MoMo'               : '#6366f1', // tím indigo
     'COD'                : '#22c55e', // xanh lá
-    'PayOS (VietQR/MB)'  : '#10b981'  // teal
+    'Chuyển khoản ngân hàng'    : '#0ea5e9'  // xanh dương
   };
 
   const hexToRgba = (hex, alpha=0.3)=>{
@@ -228,7 +223,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Plugin in tổng ở giữa doughnut
   const centerTextPlugin = {
     id: 'centerText',
     beforeDraw(chart){
@@ -249,7 +243,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   Chart.register(noDataPlugin, centerTextPlugin);
 
-  // Tooltip chung
   const commonTooltip = {
     callbacks: {
       label: (ctx)=>{
@@ -265,7 +258,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ====== TẠO CHART ======
   const mkCartesian = (canvasId, type, labels, data, color=PRIMARY) => {
     const ctx = document.getElementById(canvasId).getContext('2d');
     return new Chart(ctx, {
@@ -312,7 +304,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const mkDoughnut = (canvasId, labels, data) => {
     const ctx = document.getElementById(canvasId).getContext('2d');
-    // Màu ưu tiên theo nhãn đã chuẩn hóa; còn lại rơi vào palette
     const bg = labels.map((lbl, i)=> payColorMap[lbl] ?? palette[i % palette.length]);
     return new Chart(ctx, {
       type: 'doughnut',
@@ -329,14 +320,12 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  // Khởi tạo
   const catChart   = mkCartesian('categoryRevenueChart', 'bar',  catLabels,     catRevenue,   PRIMARY);
   const dateChart  = mkCartesian('revenueByDateChart',  'line', revDateLabels,  revDateData,  '#6366f1');
   const monthChart = mkCartesian('revenueByMonthChart', 'bar',  revMonthLabels, revMonthData, '#22c55e');
   const yearChart  = mkCartesian('revenueByYearChart',  'bar',  revYearLabels,  revYearData,  '#f59e0b');
   const payChart   = mkDoughnut('revenueByPaymentMethodChart', payLabels, payRevenue);
 
-  // ====== NÚT TẢI PNG ======
   document.querySelectorAll('[data-dl]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = btn.getAttribute('data-dl');
@@ -348,7 +337,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // ====== STAT PILLS ======
   document.getElementById('pill-30d').textContent = `30 ngày: ${fmtVND(sum(revDateData))}`;
   document.getElementById('pill-12m').textContent = `12 tháng: ${fmtVND(sum(revMonthData))}`;
   document.getElementById('pill-cats').textContent = `Theo danh mục: ${fmtVND(sum(catRevenue))}`;

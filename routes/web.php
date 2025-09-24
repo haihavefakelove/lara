@@ -136,7 +136,7 @@ Route::middleware(['auth'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| ORDERS / PAYMENT (COD, MoMo, PayOS) – yêu cầu đăng nhập
+| ORDERS / PAYMENT (COD, MoMo) – yêu cầu đăng nhập
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
@@ -146,8 +146,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orders',         [OrderController::class, 'store'])->name('order.store');
     Route::get ('/orders/history', [OrderController::class, 'index']); // alias cũ
 
-    /* PayOS */
-    Route::get ('/orders/{order}/pay/payos', [OrderController::class, 'payWithPayOS'])->name('orders.payos');
+    /* Bank Transfer */
+    Route::get ('/orders/{order}/pay/bank_transfer', [OrderController::class, 'payWithBankTransfer'])->name('orders.bank_transfer');
+
+    /* Order status & completion */
     Route::get ('/orders/{order}/status',    [OrderController::class, 'status'])->name('orders.status');
     Route::get ('/orders/{order}/thankyou',  [OrderController::class, 'thankyou'])->name('orders.thankyou');
     Route::get ('/orders/{order}/cancelled', [OrderController::class, 'cancelled'])->name('orders.cancelled');
@@ -167,9 +169,6 @@ Route::middleware(['auth'])->group(function () {
 | WEBHOOKS (PUBLIC – KHÔNG auth/CSRF)
 |--------------------------------------------------------------------------
 */
-// PayOS webhook đặt NGOÀI middleware 'auth' để PayOS có thể gọi vào
 
-Route::get('/webhooks/payos', function () {
-    return response('OK', 200);
-});
-Route::post('/webhooks/payos', [OrderController::class, 'webhookPayOS'])->name('webhooks.payos');
+// Webhook cho chuyển khoản ngân hàng
+Route::post('/webhooks/bank-transfer', [OrderController::class, 'webhookBankTransfer'])->name('webhooks.bank_transfer');

@@ -141,13 +141,12 @@ class ReportController extends Controller
     $revYearData = $byYear->pluck('revenue')->map(fn($v) => (float)$v)->toArray();
 
     // ======= 6) Doanh thu theo PHƯƠNG THỨC THANH TOÁN =======
-    // Tính doanh thu cho phương thức thanh toán Momo, COD và PayOS
-    $paymentMethodLabels = [ 'COD', 'MoMo', 'PayOS'];
+    // Tính doanh thu cho các phương thức thanh toán
+    $paymentMethodLabels = [ 'COD', 'MoMo', 'Chuyển khoản ngân hàng'];
     $paymentMethodRevenue = [
-        
-        (float) Orders::whereIn('status', ['paid', 'paid_cod', 'cod_ordered'])->sum('total_price'),
-        (float) Orders::where('payment_method', 'momo')->where('status', 'paid')->sum('total_price'),  // Momo
-        (float) Orders::where('payment_method', 'payos')->sum('total_price'),  // Thêm dữ liệu PayOS
+        (float) Orders::whereIn('status', ['paid', 'paid_cod', 'cod_ordered'])->sum('total_price'),  // COD
+        (float) Orders::where('payment_method', 'momo')->where('status', 'paid')->sum('total_price'),  // MoMo
+        (float) Orders::where('payment_method', 'bank_transfer')->where('status', 'paid')->sum('total_price'),  // Bank Transfer
     ];
 
     // Trả về view với các dữ liệu đã xử lý

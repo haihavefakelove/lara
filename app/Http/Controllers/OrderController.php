@@ -12,12 +12,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-// PayOS
-use App\Services\PayOSService;
-
 class OrderController extends Controller
 {
-    /* ===================== CUSTOMER – ORDERS LIST / DETAIL ===================== */
 
     public function index()
     {
@@ -32,7 +28,7 @@ class OrderController extends Controller
         return view('orders.show', compact('order'));
     }
 
-    /* ===================== CREATE ORDER (COD / MoMo / PayOS) ===================== */
+
 
     public function store(Request $request)
     {
@@ -44,10 +40,10 @@ class OrderController extends Controller
         $validated = $request->validate([
             'phone'          => ['required', 'string', 'max:20'],
             'address'        => ['required', 'string', 'max:255'],
-            'payment_method' => ['required', 'in:COD,online,momo_qr,momo_atm,payos'],
+            'payment_method' => ['required', 'in:COD,online,momo_qr,momo_atm,bank_transfer'],
         ]);
 
-        // Tính tổng giá theo database
+
         $computedTotal = 0;
         foreach ($cart as $productId => $line) {
             $p = Product::find($productId);
@@ -58,8 +54,8 @@ class OrderController extends Controller
             $computedTotal += (float) $p->price * $qty;
         }
 
-        /* ---- ÁP MÃ GIẢM GIÁ (NẾU CÓ) TỪ SESSION ---- */
-        $couponData = session('coupon');   // ['id','code','discount',...]
+
+        $couponData = session('coupon'); 
         $discount   = 0;
         $couponId   = null;
 
@@ -125,24 +121,24 @@ class OrderController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        // CHỈ xoá giỏ khi COD; PayOS/MoMo sẽ xoá sau khi thanh toán thành công
+
         if ($validated['payment_method'] === 'COD') {
             session()->forget(['cart', 'coupon']);
             return redirect()->route('orders.index')->with('success', 'Đặt hàng thành công (COD). Cảm ơn bạn!');
         }
 
-        // PAYOS: chuyển sang trang QR
-        if ($validated['payment_method'] === 'payos') {
-            return redirect()->route('orders.payos', $order);
+
+        if ($validated['payment_method'] === 'bank_transfer') {
+            return redirect()->route('orders.bank_transfer', $order);
         }
 
-        // Còn lại: MoMo
-        $method      = $validated['payment_method'];     // online|momo_qr|momo_atm
+
+        $method      = $validated['payment_method'];  
         $requestType = ($method === 'momo_atm') ? 'payWithATM' : 'captureWallet';
         return $this->momoCreate($order, $requestType);
     }
 
-    /* ===================== MOMO – CREATE PAYMENT ===================== */
+
 
     protected function momoCreate(Orders $order, string $requestType = 'captureWallet')
     {
@@ -208,7 +204,6 @@ class OrderController extends Controller
         }
     }
 
-    /* ===================== MOMO – RETURN & IPN ===================== */
 
     public function momoCallback(Request $request)
     {
@@ -273,7 +268,6 @@ class OrderController extends Controller
         }
     }
 
-    /* ===================== PAY AGAIN (MoMo) ===================== */
 
     public function payAgain(Orders $order)
     {
@@ -281,10 +275,8 @@ class OrderController extends Controller
         if ($order->payment_status === 'paid' || $order->status === 'paid') {
             return redirect()->route('orders.index')->with('success', 'Đơn đã thanh toán.');
         }
-        return $this->momoCreate($order, 'captureWallet');
+        return $this->momoCreate($order, 'payWithATM');
     }
-
-    /* ===================== CANCEL ORDER (RESTORE INVENTORY) ===================== */
 
     public function cancel(Orders $order)
     {
@@ -309,66 +301,31 @@ class OrderController extends Controller
         return back()->with('success', 'Đơn hàng đã được hủy và hoàn kho.');
     }
 
-    /* ===================== PAYOS – CREATE LINK / WEBHOOK / POLLING ===================== */
 
-    // mở trang thanh toán PayOS (QR MB)
-    // mở trang thanh toán PayOS (QR MB)
-public function payWithPayOS(Orders $order, \App\Services\PayOSService $payos)
-{
-    abort_unless(auth()->id() === $order->user_id, 403);
 
-    // Đơn đã thanh toán thì thôi
-    if (in_array($order->status, ['paid','completed']) || $order->payment_status === 'paid') {
-        return redirect()->route('orders.show', $order)->with('success','Đơn đã thanh toán.');
+    public function payWithBankTransfer(Orders $order)
+    {
+        abort_unless(auth()->id() === $order->user_id, 403);
+        if (in_array($order->status, ['paid','completed']) || $order->payment_status === 'paid') {
+            return redirect()->route('orders.show', $order)->with('success','Đơn đã thanh toán.');
+        }
+
+        $order->update([
+            'payment_method' => 'bank_transfer',
+            'payment_status' => 'pending',
+        ]);
+
+        $amount = (int)$order->total_price;
+        $orderCode = 'DH' . $order->id;
+        $qrUrl = "https://img.vietqr.io/image/mbbank-0000153686666-compact.jpg?amount={$amount}&addInfo={$orderCode}";
+
+        return view('payment.bank_transfer', [
+            'order' => $order,
+            'qrUrl' => $qrUrl,
+            'orderCode' => $orderCode,
+        ]);
     }
 
-    // PayOS yêu cầu orderCode là số nguyên dương và duy nhất
-    $orderCode = (int)($order->id . now()->format('His'));
-
-    $returnUrl = str_replace('%ORDER_ID%', $order->id, config('payos.return_url'));
-    $cancelUrl = str_replace('%ORDER_ID%', $order->id, config('payos.cancel_url'));
-
-    $payload = [
-        'orderCode'   => $orderCode,
-        'amount'      => (int)$order->total_price,
-        'description' => 'DH'.str_pad($order->id, 6, '0', STR_PAD_LEFT),
-        'returnUrl'   => $returnUrl,
-        'cancelUrl'   => $cancelUrl,
-    ];
-
-    try {
- $res  = $payos->createPaymentLink($payload);
-$data = $res['data'] ?? $res;
-
-$order->update([
-    'payos_order_code'   => $orderCode,
-    'payos_checkout_url' => $data['checkoutUrl'] ?? null,
-    'payment_method'     => 'payos',
-    'payment_status'     => 'pending',
-]);
-
-if (!empty($data['checkoutUrl'])) {
-    return redirect()->away($data['checkoutUrl']);
-}
-
-// Cách 2 — Dùng view nội bộ (nếu bạn muốn nằm trong site mình):
-return view('payment.payos', [
-    'order'     => $order,
-    'qrPayload' => $data['qrCode'] ?? null,       // CHUỖI VietQR, không phải ảnh
-    'payUrl'    => $data['checkoutUrl'] ?? null,  // ĐỂ NULL nếu không có, KHÔNG dùng '#'
-    'addInfo'   => $payload['description'],
-    'rawJson'   => json_encode($res, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
-]);
-
-    } catch (\Throwable $e) {
-        \Log::error('[PayOS] create link error: '.$e->getMessage());
-        return redirect()->route('orders.show', $order)
-            ->with('error','Không tạo được link PayOS, vui lòng chọn phương thức khác.');
-    }
-}
-
-
-    // client polling để trang thấy thanh toán xong
     public function status(Orders $order)
     {
         abort_unless(auth()->id() === $order->user_id, 403);
@@ -377,99 +334,80 @@ return view('payment.payos', [
         ]);
     }
 
-    // Webhook từ PayOS (cấu hình URL: /webhooks/payos)
-   public function webhookPayOS(Request $request, PayOSService $payos)
-{
-    $raw = $request->getContent();
-    $sigHdr = $request->header('x-signature') ?? $request->header('x-payos-signature');
-
-    if (!$payos->verifyWebhook($raw, $sigHdr)) {
-        \Log::warning('[PayOS] Invalid signature', ['header'=>$sigHdr, 'body'=>$raw]);
-        return response()->json(['ok'=>false], 401);
-    }
-
-    $payload = $request->json()->all();
-    \Log::info('[PayOS] webhook', $payload);
-
-    $code    = (string)($payload['code']    ?? '');
-    $success = (bool)  ($payload['success'] ?? ($code === '00'));
-    $data    = (array) ($payload['data']    ?? []);
-
-    $orderCode = (int)($data['orderCode'] ?? 0);
-    $amount    = (int)($data['amount']    ?? 0);
-
-    if (!$orderCode) return response()->json(['ok'=>true]);
-
-    $order = \App\Models\Orders::where('payos_order_code', $orderCode)->first();
-    if (!$order) return response()->json(['ok'=>true]);
-
-    // Theo tài liệu: giao dịch thành công khi success=true && data.code=="00"
-    $dataCode = (string)($data['code'] ?? '');
-    $isPaid   = $success && $dataCode === '00';
-
-    if ($isPaid && $amount >= (int)$order->total_price) {
-        if ($order->payment_status !== 'paid' && !in_array($order->status, ['paid','completed'])) {
-            $order->update([
-                'status'         => 'paid',
-                'payment_status' => 'paid',
-                'paid_at'        => now(),
-            ]);
-        }
-    }
-
-    return response()->json(['ok'=>true]);
-}
-public function thankyou(Orders $order, \App\Services\PayOSService $payos, Request $req)
+public function thankyou(Orders $order, Request $req)
 {
     abort_unless(auth()->id() === $order->user_id, 403);
-
-    // Fallback: hỏi PayOS nếu đơn chưa paid
-    if ($order->payment_status !== 'paid' && $order->payos_order_code) {
-        try {
-            $rs = $payos->getPaymentRequest((int)$order->payos_order_code);
-            $st = strtoupper((string)($rs['data']['status'] ?? ''));
-            if ($st === 'PAID') {
-                $order->update([
-                    'status'         => 'paid',
-                    'payment_status' => 'paid',
-                    'paid_at'        => now(),
-                ]);
-            } elseif ($st === 'CANCELLED') {
-                $order->update(['status' => 'cancelled', 'payment_status' => 'cancelled']);
-            }
-        } catch (\Throwable $e) {
-            \Log::warning('[PayOS] thankyou fallback failed: '.$e->getMessage());
-        }
-    }
 
     session()->forget(['cart','coupon']);
     return view('payment.thankyou', ['order'=>$order]);
 }
 
-public function cancelled(Orders $order, \App\Services\PayOSService $payos)
+public function cancelled(Orders $order)
 {
     abort_unless(auth()->id() === $order->user_id, 403);
 
-    // Fallback cập nhật cancelled
-    if (!in_array($order->status, ['cancelled','paid']) && $order->payos_order_code) {
-        try {
-            $rs = $payos->getPaymentRequest((int)$order->payos_order_code);
-            $st = strtoupper((string)($rs['data']['status'] ?? ''));
-            if ($st === 'CANCELLED') {
-                $order->update(['status' => 'cancelled', 'payment_status' => 'cancelled']);
-            } elseif ($st === 'PAID') {
-                $order->update([
-                    'status'         => 'paid',
-                    'payment_status' => 'paid',
-                    'paid_at'        => now(),
-                ]);
-            }
-        } catch (\Throwable $e) {
-            \Log::warning('[PayOS] cancelled fallback failed: '.$e->getMessage());
-        }
-    }
-
     return view('payment.cancelled', ['order'=>$order]);
 }
+
+
+    public function webhookBankTransfer(Request $request)
+    {
+        $payload = $request->all();
+
+        if (!isset($payload['transferAmount']) || !isset($payload['content']) || !isset($payload['transferType'])) {
+            return response()->json(['status' => 'error', 'message' => 'Không đủ dữ liệu'], 400);
+        }
+        $amount = (int)$payload['transferAmount'];
+        $content = trim($payload['content']);
+        if (!preg_match('/DH(\d+)/i', $content, $matches)) {
+            return response()->json(['status' => 'ok', 'message' => 'Không tìm thấy mã đơn hàng']);
+        }
+
+        $orderId = (int)$matches[1];
+        $order = Orders::find($orderId);
+
+        if (!$order) {
+            return response()->json(['status' => 'ok', 'message' => 'Không tìm thấy đơn hàng']);
+        }
+
+        if ($order->payment_status === 'paid' || in_array($order->status, ['paid', 'completed'])) {
+            Log::info('[BankTransfer] Order already paid', ['order_id' => $orderId]);
+            return response()->json(['status' => 'ok', 'message' => 'Đơn hàng đã được thanh toán']);
+        }
+
+        if ($order->payment_method !== 'bank_transfer') {
+            Log::warning('[BankTransfer] Order payment method mismatch', [
+                'order_id' => $orderId,
+                'expected' => 'bank_transfer',
+                'actual' => $order->payment_method
+            ]);
+            return response()->json(['status' => 'ok', 'message' => 'Không đúng phương thức thanh toán']);
+        }
+
+        $expectedAmount = (int)$order->total_price;
+        if ($amount < $expectedAmount) {
+            Log::warning('[BankTransfer] Amount insufficient', [
+                'order_id' => $orderId,
+                'expected' => $expectedAmount,
+                'received' => $amount
+            ]);
+            return response()->json(['status' => 'ok', 'message' => 'Số tiền không đủ']);
+        }
+
+        try {
+            DB::transaction(function () use ($order, $payload, $amount) {
+                $order->update([
+                    'status' => 'paid',
+                    'payment_status' => 'paid',
+                    'updated_at' => now(),
+                ]);
+            });
+
+            return response()->json(['status' => 'success', 'message' => 'Thanh toán thành công']);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Thanh toán thất bại'], 500);
+        }
+    }
 
 }
