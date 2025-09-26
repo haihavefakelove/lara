@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\PageController as AdminPageController;
+use App\Http\Controllers\ChatbotController;
 
 /*
 |--------------------------------------------------------------------------
@@ -172,3 +173,7 @@ Route::middleware(['auth'])->group(function () {
 
 // Webhook cho chuyển khoản ngân hàng
 Route::post('/webhooks/bank-transfer', [OrderController::class, 'webhookBankTransfer'])->name('webhooks.bank_transfer');
+
+
+Route::get('/chat', [ChatbotController::class, 'index'])->name('chat.index');
+Route::post('/chat/message', [ChatbotController::class, 'message'])->name('chat.message');

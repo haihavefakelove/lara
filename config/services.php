@@ -40,7 +40,7 @@ return [
         'ipn_url'      => env('MOMO_IPN_URL', 'http://127.0.0.1:8000/momo/ipn'),
     ],
     'tawk' => [
-       
+
         // Cách 2: tách id (nếu bạn thích)
         'property_id' => env('TAWK_PROPERTY_ID'), // 68cf50f44648ec19228c19f0
         'widget_id'   => env('TAWK_WIDGET_ID'),   // 1j5kt8evm
@@ -51,4 +51,12 @@ return [
         // Tuỳ chọn: SSO/Identity hash (nâng cao – có thì set, không có có thể bỏ)
         'sso_key'     => env('TAWK_SSO_KEY'),
     ],
+
+
+    'llm' => [
+    'key'   => env('LLM_API_KEY'),
+    'base'  => env('LLM_URL_BASE', 'http://localhost:11434/v1'),
+    'model' => env('LLM_MODEL', 'qwen3:8b'),
+    ],
+
 ];
