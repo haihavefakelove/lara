@@ -48,6 +48,7 @@
             @enderror
         </div>
 
+        {{-- Đơn tối thiểu / Giảm tối đa --}}
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="min_order" class="form-label">Đơn tối thiểu</label>
@@ -60,13 +61,14 @@
             </div>
 
             <div class="col-md-6 mb-3">
-                <label for="max_order" class="form-label">Đơn tối đa</label>
+                <label for="max_order" class="form-label">Giảm tối đa</label>
                 <input type="number" step="0.01" min="0" id="max_order" name="max_order"
                        class="form-control @error('max_order') is-invalid @enderror"
                        value="{{ old('max_order', $coupon->max_order) }}" placeholder="VND">
                 @error('max_order')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
+                <div class="form-text">Mức tiền giảm tối đa mà mã có thể áp dụng (để trống nếu không giới hạn).</div>
             </div>
         </div>
 
@@ -81,7 +83,7 @@
             @enderror
         </div>
 
-        {{-- Ngày bắt đầu/kết thúc (đúng tên cột: start_at / end_at) --}}
+        {{-- Ngày bắt đầu/kết thúc (start_at / end_at) --}}
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="start_at" class="form-label">Bắt đầu</label>

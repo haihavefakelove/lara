@@ -30,17 +30,8 @@ class CouponController extends Controller
             'min_order' => Rule::when(
             $request->type === 'percent',
             ['required','numeric','min:0.01'],
-            ['nullable','numeric','min:0']
-            ),
-            'max_order' => [
-            'nullable','numeric','min:0',
-                function ($attr, $value, $fail) use ($request) {
-                    if ($value !== null && $request->filled('min_order')
-                        && (float)$value < (float)$request->min_order) {
-                        $fail('Đơn tối đa phải lớn hơn hoặc bằng Đơn tối thiểu.');
-                    }
-                },
-            ],
+            ['nullable','numeric','min:0']),
+            'max_order' => ['nullable','numeric','min:0'],
             'start_at'  => 'nullable|date',
             'end_at'    => 'nullable|date|after_or_equal:start_at',
             'is_active' => 'nullable|boolean',
@@ -68,15 +59,7 @@ class CouponController extends Controller
             ['required','numeric','min:0.01'],
             ['nullable','numeric','min:0']
             ),
-            'max_order' => [
-            'nullable','numeric','min:0',
-                function ($attr, $value, $fail) use ($request) {
-                    if ($value !== null && $request->filled('min_order')
-                        && (float)$value < (float)$request->min_order) {
-                        $fail('Đơn tối đa phải lớn hơn hoặc bằng Đơn tối thiểu.');
-                    }
-                },
-            ],
+            'max_order' => ['nullable','numeric','min:0'],
             'start_at'  => 'nullable|date',
             'end_at'    => 'nullable|date|after_or_equal:start_at',
             'is_active' => 'nullable|boolean',

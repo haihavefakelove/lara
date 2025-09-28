@@ -23,7 +23,7 @@
                 <th>Lượt dùng</th>
                 <th>Giới hạn</th>
                 <th>Đơn tối thiểu</th>
-                <th>Đơn tối đa</th> 
+                <th>Giảm tối đa</th> 
                 <th>Kích hoạt</th>
                 <th>Thời gian</th>
                 <th></th>

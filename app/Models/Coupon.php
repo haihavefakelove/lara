@@ -47,16 +47,16 @@ class Coupon extends Model
         return 0.0;
     }
     
-    if (!is_null($this->max_order) && $cartTotal > (float)$this->max_order) {
-        return 0.0;
-    }
-
     $discount = 0.0;
 
     if ($this->type === 'percent') {
         $discount = $cartTotal * ((float)$this->value / 100.0);
     } else { 
         $discount = (float)$this->value;
+    }
+      
+    if (!is_null($this->max_order) && $discount > (float)$this->max_order) {
+        $discount = (float)$this->max_order;
     }
 
     return round(max(0.0, min($discount, $cartTotal)), 2);
