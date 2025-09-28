@@ -17,6 +17,13 @@
     </div>
 @endif
 
+@if ($errors->any())
+    <div class="alert alert-danger alert-dismissible fade show mt-2">
+        <i class="bi bi-x-circle me-2"></i> {{ $errors->first() }}
+        <button class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
 @php
     // Tính tổng tạm tính của giỏ
     $subtotal = 0;

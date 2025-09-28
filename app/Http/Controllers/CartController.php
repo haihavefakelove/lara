@@ -14,6 +14,7 @@ class CartController extends Controller
     {
         // cart: [ productId => [name, price, quantity, category] ]
         $cart = session()->get('cart', []);
+        $this->recalcCouponFromCart($cart);
         return view('cart.index', compact('cart'));
     }
 
@@ -79,6 +80,10 @@ class CartController extends Controller
     if ($coupon->min_order !== null && $total < (float)$coupon->min_order) {
         return back()->with('error', 'Đơn tối thiểu để dùng mã: ' . number_format($coupon->min_order,0,',','.') . ' đ');
     }
+    
+    if ($coupon->max_order !== null && $total > (float)$coupon->max_order) {
+        return back()->with('error', 'Đơn tối đa để dùng mã: ' . number_format($coupon->max_order,0,',','.') . ' đ');
+    }
 
     $discount = $coupon->calcDiscount($total);
     if ($discount <= 0) {
@@ -132,6 +137,7 @@ public function removeCoupon()
 
         $cart[$id]['quantity'] = $newQty;
         session()->put('cart', $cart);
+        $this->recalcCouponFromCart($cart);
 
         return redirect()->route('cart.index')->with('success', 'Giỏ hàng đã được cập nhật!');
     }
@@ -145,7 +151,57 @@ public function removeCoupon()
         if (isset($cart[$id])) {
             unset($cart[$id]);
             session()->put('cart', $cart);
+            $this->recalcCouponFromCart($cart);
         }
         return redirect()->route('cart.index')->with('success', 'Sản phẩm đã được xoá khỏi giỏ hàng.');
     }
+
+    private function recalcCouponFromCart(array $cart): void
+{
+      $subtotal = 0;
+    foreach ($cart as $line) {
+        $subtotal += $line['price'] * $line['quantity'];
+    }
+
+    $couponData = session('coupon');
+    if (!$couponData) {
+        return;
+    }
+    $coupon = \App\Models\Coupon::valid()
+        ->where('code', $couponData['code'])
+        ->first();
+
+    if (!$coupon) {
+        session()->forget('coupon'); 
+        return;
+    }
+
+    if ($coupon->min_order !== null && $subtotal < (float) $coupon->min_order) {
+        session()->forget('coupon');
+        return;
+    }
+    if ($coupon->max_order !== null && $subtotal > (float) $coupon->max_order) {
+        session()->forget('coupon');
+        return;
+    }
+
+    $discount = $coupon->calcDiscount($subtotal);
+    if ($discount <= 0) {
+        session()->forget('coupon');
+        return;
+    }
+    if ($discount > $subtotal) {
+        $discount = $subtotal;
+    }
+    session([
+        'coupon' => [
+            'id'       => $coupon->id,
+            'code'     => $coupon->code,
+            'type'     => $coupon->type,
+            'value'    => $coupon->value,
+            'discount' => $discount,
+        ],
+    ]);
+}
+
 }

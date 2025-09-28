@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 class AuthController extends Controller
 {
@@ -100,6 +101,13 @@ class AuthController extends Controller
 
             // Điều hướng theo vai trò
             $user = Auth::user();
+
+              if ($user instanceof MustVerifyEmail && !$user->hasVerifiedEmail()) {
+            return redirect()
+                ->route('verification.notice')
+                ->with('message', 'Tài khoản của bạn chưa được xác thực. Vui lòng kiểm tra email hoặc nhấn để gửi lại email xác thực.');
+            }
+
             if ($user->role === 'admin') {
                 return redirect()->intended(route('admin.dashboard'))
                                  ->with('success','Chào mừng quản trị viên!');

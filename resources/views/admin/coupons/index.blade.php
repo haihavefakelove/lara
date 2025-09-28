@@ -16,8 +16,17 @@
         <table class="table table-hover mb-0 align-middle">
             <thead class="table-light">
             <tr>
-                <th>#</th><th>Mã</th><th>Loại</th><th>Giá trị</th>
-                <th>Lượt dùng</th><th>Giới hạn</th><th>Kích hoạt</th><th>Thời gian</th><th></th>
+                <th>#</th>
+                <th>Mã</th>
+                <th>Loại</th>
+                <th>Giá trị</th>
+                <th>Lượt dùng</th>
+                <th>Giới hạn</th>
+                <th>Đơn tối thiểu</th>
+                <th>Đơn tối đa</th> 
+                <th>Kích hoạt</th>
+                <th>Thời gian</th>
+                <th></th>
             </tr>
             </thead>
             <tbody>
@@ -29,6 +38,8 @@
                 <td>{{ $c->type=='percent' ? $c->value.' %' : number_format($c->value,0,',','.') . ' đ' }}</td>
                 <td>{{ $c->used }}</td>
                 <td>{{ $c->max_uses ?? '∞' }}</td>
+                <td>{{ $c->min_order ? number_format($c->min_order,0,',','.') . ' đ' : '-' }}</td>
+                <td>{{ $c->max_order ? number_format($c->max_order,0,',','.') . ' đ' : '-' }}</td> {{-- hiển thị max_order --}}
                 <td>{!! $c->is_active ? '<span class="badge bg-success">ON</span>' : '<span class="badge bg-secondary">OFF</span>' !!}</td>
                 <td>
                     @if($c->start_at) {{ $c->start_at->format('d/m/Y') }} @endif -

@@ -21,6 +21,7 @@ return new class extends Migration
             $table->unsignedInteger('max_uses')->nullable();
             $table->unsignedInteger('used')->default(0);
             $table->decimal('min_order', 12, 2)->nullable();
+            $table->decimal('max_order', 12, 2)->nullable();
             $table->timestamp('start_at')->nullable();
             $table->timestamp('end_at')->nullable();
             $table->boolean('is_active')->default(true);
