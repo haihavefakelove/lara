@@ -149,7 +149,7 @@ Route::middleware(['auth','verified'])->group(function () {
     Route::post('/orders',         [OrderController::class, 'store'])->name('order.store');
     Route::get ('/orders/history', [OrderController::class, 'index']); // alias cũ
 
-    /* Bank Transfer */
+
     Route::get ('/orders/{order}/pay/bank_transfer', [OrderController::class, 'payWithBankTransfer'])->name('orders.bank_transfer');
 
     /* Order status & completion */
@@ -173,7 +173,7 @@ Route::middleware(['auth','verified'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-// Webhook cho chuyển khoản ngân hàng
+
 Route::post('/webhooks/bank-transfer', [OrderController::class, 'webhookBankTransfer'])->name('webhooks.bank_transfer');
 
 

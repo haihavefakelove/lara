@@ -776,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function() {
             productCard.className = 'product-card';
             productCard.style.animationDelay = `${index * 0.1}s`;
             productCard.innerHTML = `
-                <img src="/${product.image_url || ''}" alt="${product.name || ''}" 
+                <img src="${product.image_url || ''}" alt="${product.name || ''}" 
                      loading="lazy"
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%2260%22><rect width=%22100%%22 height=%22100%%22 fill=%22%23f8f9fa%22/><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22 font-size=%2212%22>No Image</text></svg>'">
                 <div class="product-name">${product.name || ''}</div>
