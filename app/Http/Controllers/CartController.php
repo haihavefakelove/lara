@@ -80,10 +80,6 @@ class CartController extends Controller
     if ($coupon->min_order !== null && $total < (float)$coupon->min_order) {
         return back()->with('error', 'Đơn tối thiểu để dùng mã: ' . number_format($coupon->min_order,0,',','.') . ' đ');
     }
-    
-    if ($coupon->max_order !== null && $total > (float)$coupon->max_order) {
-        return back()->with('error', 'Đơn tối đa để dùng mã: ' . number_format($coupon->max_order,0,',','.') . ' đ');
-    }
 
     $discount = $coupon->calcDiscount($total);
     if ($discount <= 0) {
@@ -180,11 +176,7 @@ public function removeCoupon()
         session()->forget('coupon');
         return;
     }
-    if ($coupon->max_order !== null && $subtotal > (float) $coupon->max_order) {
-        session()->forget('coupon');
-        return;
-    }
-
+ 
     $discount = $coupon->calcDiscount($subtotal);
     if ($discount <= 0) {
         session()->forget('coupon');

@@ -50,7 +50,7 @@
     </div>
 
     <div class="col-md-3">
-        <label class="form-label">Đơn tối đa</label>
+        <label class="form-label">Giảm tối đa</label>
         <input type="number" step="0.01" min="0"
                name="max_order" id="max_order"
                value="{{ old('max_order') }}"
@@ -59,6 +59,7 @@
         @error('max_order')
             <div class="invalid-feedback">{{ $message }}</div>
         @enderror
+        <div class="form-text">Mức giảm tối đa mà mã có thể áp dụng (để trống nếu không giới hạn).</div>
     </div>
 
     <div class="col-md-3">
