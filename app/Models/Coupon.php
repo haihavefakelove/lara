@@ -10,14 +10,19 @@ class Coupon extends Model
     use HasFactory;
 
     protected $fillable = [
-        'code', 'type', 'value', 'max_uses', 'used', 'min_order',
+        'code', 'type', 'value', 'max_uses', 'used', 'min_order', 'max_order',
         'start_at', 'end_at', 'is_active'
     ];
 
     protected $casts = [
-        'start_at' => 'datetime',
-        'end_at'   => 'datetime',
-        'is_active'=> 'boolean',
+        'value'      => 'float',
+        'min_order'  => 'float',
+        'max_order'  => 'float',
+        'max_uses'   => 'int',
+        'used'       => 'int',
+        'start_at'   => 'datetime',
+        'end_at'     => 'datetime',
+        'is_active'  => 'boolean',
     ];
 
     public function scopeValid($query)
@@ -34,11 +39,27 @@ class Coupon extends Model
             });
     }
 
-    public function calcDiscount(float $cartTotal): float
-    {
-        if ($this->type === 'percent') {
-            return round($cartTotal * ($this->value / 100), 2);
-        }
-        return round($this->value, 2);
+   public function calcDiscount(float $cartTotal): float
+{
+    if ($cartTotal <= 0) return 0.0;
+
+    if (!is_null($this->min_order) && $cartTotal < (float)$this->min_order) {
+        return 0.0;
     }
+    
+    if (!is_null($this->max_order) && $cartTotal > (float)$this->max_order) {
+        return 0.0;
+    }
+
+    $discount = 0.0;
+
+    if ($this->type === 'percent') {
+        $discount = $cartTotal * ((float)$this->value / 100.0);
+    } else { 
+        $discount = (float)$this->value;
+    }
+
+    return round(max(0.0, min($discount, $cartTotal)), 2);
+}
+
 }

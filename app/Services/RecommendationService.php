@@ -122,7 +122,7 @@ class RecommendationService
             if ($topCate) {
                 return Product::query()
                     ->where('category_id', $topCate)
-                    ->orderByDesc('sold_count') // nếu không có cột này, thay bằng join order_items
+                    ->orderByDesc('sold_count') 
                     ->take($limit)
                     ->get();
             }

@@ -61,7 +61,9 @@ Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 /* Hủy đơn (public endpoint cho người dùng đã đăng nhập/owner trong controller) */
-Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+Route::middleware(['auth','verified'])->group(function(){
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -122,7 +124,7 @@ Route::middleware(['auth', 'verified', 'admin'])
 | CART (User)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth','verified'])->group(function () {
     Route::get   ('/cart',                  [CartController::class, 'index'])->name('cart.index');
     Route::post  ('/cart/add/{product}',    [CartController::class, 'add'])->name('cart.add');
     Route::patch ('/cart/{id}',             [CartController::class, 'update'])->name('cart.update');
@@ -140,7 +142,7 @@ Route::middleware(['auth'])->group(function () {
 | ORDERS / PAYMENT (COD, MoMo) – yêu cầu đăng nhập
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth','verified'])->group(function () {
     /* Orders */
     Route::get ('/orders',         [OrderController::class, 'index'])->name('orders.index');
     Route::get ('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
