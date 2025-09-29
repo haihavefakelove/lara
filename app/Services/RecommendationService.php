@@ -12,7 +12,7 @@ class RecommendationService
 {
     protected int $defaultLimit = 8;
 
-    public function forProduct(?int $userId, int $productId, int $limit = null)
+    public function forProduct(?int $userId, int $productId, ?int $limit = null)
     {
         $limit = $limit ?? $this->defaultLimit;
 
@@ -20,92 +20,113 @@ class RecommendationService
             $product = Product::query()->find($productId);
             if (!$product) return collect();
 
-            $pool = collect();
+            $orderedIds = [];
 
-            // 1) TƯƠNG TỰ (cùng category, gần tầm giá)
-            $priceBand = 0.2; // ±20%
+            // 1) SIMILAR
+            $priceBand = 0.2; 
             $min = ($product->price ?? 0) * (1 - $priceBand);
             $max = ($product->price ?? 0) * (1 + $priceBand);
 
-            $similar = Product::query()
-                ->where('id', '!=', $product->id)
-                ->when(isset($product->category_id), fn($q) => $q->where('category_id', $product->category_id))
-                ->when(isset($product->price), fn($q) => $q->whereBetween('price', [$min, $max]))
-                ->take($limit * 2)
-                ->get()
-                ->mapWithKeys(fn($p) => [$p->id => 0.6]);
+            $candidates = Product::query()
+            ->where('category_id', $product->category_id)
+            ->where('id', '!=', $product->id)
+            ->orderByDesc('created_at') // hoặc ->latest() / ->orderByDesc('id') / ->orderByDesc('views')
+            ->get();
 
-            $pool = $pool->merge($similar);
 
-            // 2) LỊCH SỬ MUA CỦA USER
-            if ($userId) {
-                $userTopProducts = OrderItems::query()
-                    ->select('order_items.product_id', DB::raw('COUNT(*) as cnt'))
-                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
-                    ->where('orders.user_id', $userId)
-                    ->groupBy('order_items.product_id')
-                    ->orderByDesc('cnt')
-                    ->take($limit * 2)
-                    ->pluck('cnt', 'product_id');
-
-                foreach ($userTopProducts as $pid => $cnt) {
-                    if ($pid == $productId) continue;
-                    $pool[$pid] = max($pool[$pid] ?? 0, 0.5 + min($cnt, 5) * 0.02);
-                }
-
-                $userTopCategories = OrderItems::query()
-                    ->select('products.category_id', DB::raw('COUNT(*) as cnt'))
-                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
-                    ->join('products', 'products.id', '=', 'order_items.product_id')
-                    ->where('orders.user_id', $userId)
-                    ->groupBy('products.category_id')
-                    ->orderByDesc('cnt')
-                    ->take(3)
-                    ->pluck('cnt', 'category_id');
-
-                if ($userTopCategories->isNotEmpty()) {
-                    $cand = Product::query()
-                        ->whereIn('category_id', $userTopCategories->keys())
-                        ->where('id', '!=', $productId)
-                        ->take($limit * 2)
-                        ->pluck('id');
-
-                    foreach ($cand as $pid) {
-                        $pool[$pid] = max($pool[$pid] ?? 0, 0.45);
-                    }
+            $pickedSimilar = 0;
+            foreach ($candidates as $p) {
+                if (isset($p->price) && $p->price >= $min && $p->price <= $max) {
+                    $orderedIds[] = (int)$p->id;
+                    $pickedSimilar++;
+                    if ($pickedSimilar >= 2) break;
                 }
             }
 
-            // 3) ALSO-BOUGHT (đồng mua trong cùng đơn)
-            $alsoBought = OrderItems::query()
+            // 2) ALSO-BOUGHT
+            $alsoBoughtRows = OrderItems::query()
                 ->select('oi2.product_id', DB::raw('COUNT(*) as cnt'))
                 ->from('order_items as oi1')
-                ->join('order_items as oi2', function($j) {
-                    $j->on('oi1.order_id', '=', 'oi2.order_id');
-                })
+                ->join('order_items as oi2', 'oi1.order_id', '=', 'oi2.order_id')
                 ->where('oi1.product_id', $productId)
                 ->whereColumn('oi2.product_id', '!=', 'oi1.product_id')
                 ->groupBy('oi2.product_id')
                 ->orderByDesc('cnt')
-                ->take($limit * 3)
-                ->pluck('cnt', 'product_id');
+                ->limit($limit * 2)
+                ->get();
 
-            foreach ($alsoBought as $pid => $cnt) {
-                $pool[$pid] = max($pool[$pid] ?? 0, 0.4 + min($cnt, 10) * 0.03);
+            foreach ($alsoBoughtRows as $row) {
+                $pid = (int)$row->product_id;
+                if (!in_array($pid, $orderedIds, true)) {
+                    $orderedIds[] = $pid;
+                }
+                if (count($orderedIds) >= $limit) break;
             }
 
-            $ids = collect($pool)->sortDesc()->keys()->take($limit)->values();
+            // 3) USER HISTORY
+            if (count($orderedIds) < $limit && $userId) {
+                $topCategoryRow = DB::table('order_items')
+                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                    ->join('products', 'products.id', '=', 'order_items.product_id')
+                    ->where('orders.user_id', $userId)
+                    ->select('products.category_id', DB::raw('COUNT(*) as cnt'))
+                    ->groupBy('products.category_id')
+                    ->orderByDesc('cnt')
+                    ->first();
 
-            return Product::query()
-                ->whereIn('id', $ids)
-                ->get()
-                ->sortByDesc(fn($p) => $pool[$p->id] ?? 0)
-                ->values();
+                $topCategoryId = $topCategoryRow->category_id ?? null;
+
+                if ($topCategoryId) {
+                    $rand = Product::query()
+                        ->where('category_id', $topCategoryId)
+                        ->whereNotIn('id', $orderedIds)
+                        ->where('id', '!=', $productId)
+                        ->inRandomOrder()
+                        ->first();
+
+                    if ($rand) {
+                        $orderedIds[] = (int)$rand->id;
+                    }
+                }
+            }
+            if (count($orderedIds) < $limit) {
+                foreach ($candidates as $p) {
+                    if (in_array((int)$p->id, $orderedIds, true)) continue;
+                    if (isset($p->price) && $p->price >= $min && $p->price <= $max) {
+                        $orderedIds[] = (int)$p->id;
+                        if (count($orderedIds) >= $limit) break;
+                    }
+                }
+                if (count($orderedIds) < $limit) {
+                    foreach ($candidates as $p) {
+                        if (in_array((int)$p->id, $orderedIds, true)) continue;
+                        $orderedIds[] = (int)$p->id;
+                        if (count($orderedIds) >= $limit) break;
+                    }
+                }
+            }
+            $orderedIds = array_values(array_unique($orderedIds));
+            if (empty($orderedIds)) return collect();
+            if (count($orderedIds) > $limit) {
+                $orderedIds = array_slice($orderedIds, 0, $limit);
+            }
+
+            $productsById = Product::whereIn('id', $orderedIds)->get()->keyBy('id');
+
+            $result = collect();
+            foreach ($orderedIds as $id) {
+                if (isset($productsById[$id])) {
+                    $result->push($productsById[$id]);
+                }
+            }
+
+            return $result;
+
+            
         });
     }
 
-    // Gợi ý cho trang home (user hoặc phổ biến)
-    public function forUserOrPopular(?int $userId, int $limit = null)
+    public function forUserOrPopular(?int $userId, ?int $limit = null)
     {
         $limit = $limit ?? $this->defaultLimit;
 
@@ -122,7 +143,7 @@ class RecommendationService
             if ($topCate) {
                 return Product::query()
                     ->where('category_id', $topCate)
-                    ->orderByDesc('sold_count') 
+                    ->orderByDesc('sold_count')
                     ->take($limit)
                     ->get();
             }

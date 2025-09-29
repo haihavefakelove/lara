@@ -8,17 +8,34 @@ use App\Services\RecommendationService;
 
 class RecommendationController extends Controller
 {
+    public function __construct(private RecommendationService $rec) {}
+
     public function product(Request $request, int $productId)
     {
-        $items = app(RecommendationService::class)->forProduct(Auth::id(), $productId, (int)$request->get('limit', 8));
-        if ($request->wantsJson()) return response()->json($items);
+        // Lấy limit an toàn trong khoảng 1..24
+        $limit = max(1, min(24, $request->integer('limit', 8)));
+
+        $items = $this->rec->forProduct(Auth::id(), $productId, $limit);
+
+        if ($request->wantsJson()) {
+            return response()->json($items);
+            // Hoặc dùng Resource: return ProductResource::collection($items);
+        }
+
         return view('products.partials.recommendations', ['products' => $items]);
     }
 
     public function home(Request $request)
     {
-        $items = app(RecommendationService::class)->forUserOrPopular(Auth::id(), (int)$request->get('limit', 8));
-        if ($request->wantsJson()) return response()->json($items);
+        $limit = max(1, min(24, $request->integer('limit', 8)));
+
+        $items = $this->rec->forUserOrPopular(Auth::id(), $limit);
+
+        if ($request->wantsJson()) {
+            return response()->json($items);
+            // Hoặc: return ProductResource::collection($items);
+        }
+
         return view('products.partials.recommendations', ['products' => $items]);
     }
 }
