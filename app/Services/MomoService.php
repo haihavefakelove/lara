@@ -15,7 +15,7 @@ class MomoService
 
     public function __construct()
     {
-        $this->endpoint    = config('services.momo.endpoint', 'https://test-payment.momo.vn/v2/gateway/api/create');
+        $this->endpoint    = config('services.momo.endpoint', 'https://payment.momo.vn/v2/gateway/api/create');
         $this->partnerCode = config('services.momo.partner_code');
         $this->accessKey   = config('services.momo.access_key');
         $this->secretKey   = config('services.momo.secret_key');

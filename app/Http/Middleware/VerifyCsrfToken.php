@@ -14,6 +14,7 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
         'webhooks/payos',
         'webhooks/bank-transfer',
+        'momo/ipn',
     ];
 
 }
