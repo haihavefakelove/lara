@@ -117,9 +117,3 @@
         </div>
     </div>
 @endsection
-
-{{-- Khối gợi ý sản phẩm (không ảnh hưởng khi controller chưa truyền biến) --}}
-@isset($recommendations)
-    @include('products.partials.recommendations', ['products' => $recommendations])
-@endisset
-@endsection

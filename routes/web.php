@@ -135,6 +135,10 @@ Route::middleware(['auth','verified'])->group(function () {
     /* Reviews theo từng item trong order */
     Route::get ('/orders/{order}/items/{item}/review',  [ReviewController::class, 'create'])->name('reviews.create');
     Route::post('/orders/{order}/items/{item}/review',  [ReviewController::class, 'store'])->name('reviews.store');
+    Route::get('/reviews/{review}/edit', [ReviewController::class, 'edit'])
+        ->name('reviews.edit');
+    Route::put('/reviews/{review}', [ReviewController::class, 'update'])
+        ->name('reviews.update');
 });
 
 /*

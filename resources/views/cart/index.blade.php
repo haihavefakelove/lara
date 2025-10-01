@@ -174,9 +174,6 @@
                             <option value="momo_qr"  {{ old('payment_method')==='momo_qr'  ? 'selected' : '' }}>
                                 Thanh toán MoMo (QR)
                             </option>
-                            <option value="momo_atm" {{ old('payment_method')==='momo_atm' ? 'selected' : '' }}>
-                                Thanh toán Napas 247 (ATM)
-                            </option>
                             <option value="bank_transfer" {{ old('payment_method')==='bank_transfer' ? 'selected' : '' }}>
                                 Chuyển khoản ngân hàng (QR Code)
                             </option>

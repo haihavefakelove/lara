@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Orders;
+use App\Models\Product;
 use App\Models\OrderItems;
 use App\Models\Review;
 use Illuminate\Http\Request;
@@ -36,7 +37,31 @@ class ReviewController extends Controller
         $product = $item->product()->first();
         return view('reviews.create', compact('order','item','product'));
     }
+public function edit(Review $review)
+{
+    $this->authorize('update', $review);
 
+    // Lấy product để hiển thị ảnh/tiêu đề cho tiện
+    $product = Product::find($review->product_id);
+
+    return view('reviews.edit', compact('review', 'product'));
+}
+
+public function update(Request $request, Review $review)
+{
+    $this->authorize('update', $review);
+
+    $data = $request->validate([
+        'rating'  => ['required','integer','min:1','max:5'],
+        'comment' => ['nullable','string','max:1000'],
+    ]);
+
+    $review->update($data);
+
+    return redirect()
+        ->route('orders.show', ['order' => $review->order_id ?? $request->query('order')])
+        ->with('success','Cập nhật đánh giá thành công.');
+}
     public function store(Request $request, Orders $order, OrderItems $item)
     {
         abort_if($order->user_id !== Auth::id(), 403);
